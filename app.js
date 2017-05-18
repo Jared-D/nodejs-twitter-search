@@ -2,6 +2,7 @@ var Twitter = require('twitter');
 var twitter_config = require('./config.json');
 var sqlite3 = require('sqlite3').verbose();
 const uuidV4 = require('uuid/v4');
+var TwitterSearch = require('./lib/twittersearch');
 
 // Create twitter client.
 var twitter_client = new Twitter(twitter_config);
@@ -10,70 +11,60 @@ var twitter_client = new Twitter(twitter_config);
 var db = new sqlite3.Database('db.sqlite');
 
 // Query twitter and save result.
-twitter_client.get('search/tweets', {q: '#liveperson'}, function(error, tweets, response) {
-    db.serialize(function() {
-        init_db();
-        save_search(tweets);
-    });
+db.serialize(function() {
+    init_db();
+    search = new TwitterSearch(twitter_client, "#liveperson", save_tweet, save_search);
 });
 
-// Initialise DB if not already done.
+
+// Initialise DB schema if not already done.
 function init_db() {
     db.run(
         "CREATE TABLE IF NOT EXISTS search ( "+
         "id TEXT PRIMARY KEY, "+
         "query TEXT, "+
-        "max_id INTEGER, "+
-        "time DATETIME, "+
-        "raw_data TEXT)");
+        "min_id TEXT, "+
+        "max_id TEXT, "+
+        "time DATETIME)");
     db.run(
         "CREATE TABLE IF NOT EXISTS tweet ( "+
-        "id INTEGER PRIMARY KEY, "+
+        "id TEXT PRIMARY KEY, "+
         "text TEXT, "+
         "created_at DATETIME, "+
-        "user_id INTEGER)");
+        "user_id INTEGER, "+
+        "raw_data TEXT)");
 }
 
-// Save search query and results to DB.
-function save_search(search_result) {
-    // Check data is present.
-    if(!("statuses" in search_result)) {
-        throw new Error("'statuses' key missing from result");
-    }
-    if(!("search_metadata" in search_result)) {
-        throw new Error("'search_metadata' key missing from result");
-    }
+// Save search query to DB.
+function save_search() {
     // Create and save a search record.
-    var search_record = {
-        "id": uuidV4(),
-        "query": search_result.search_metadata.query,
-        "max_id": search_result.search_metadata.max_id,
-        "time": new Date("now"),
-        "raw": search_result
-    };
     db.run(
-        "INSERT INTO search VALUES(?, ?, ?, ?, ?)",
+        "INSERT INTO search VALUES(?, ?, ?, ?, datetime(?))",
         [
-            search_record.id,
-            search_record.query,
-            search_record.max_id,
-            search_record.time.toISOString(),
-            JSON.stringify(search_record.raw)
+            uuidV4(),
+            this.query,
+            this.min_id,
+            this.max_id,
+            this.start_time.toISOString()
         ]
     );
-    // Save result tweets.
-    var statuses = search_result.statuses;
-    for(i in statuses) {
-        save_status(statuses[i]);
-    }
 }
 
-// Save Status to DB.
-function save_status(search_id, search_result) {
+// Save tweet(status) to DB.
+function save_tweet(tweet) {
     // Convert twitter date to Date object,
     // see http://programming.mvergel.com/2013/03/convert-twitters-createdat-to.html
-//    created_date = new Date(Date.parse(search_result.created_at.replace(/( \+)/, ' UTC$1')));
-//    created_date.toISOString();
-    console.log(search_result.id);
-//    db.run("INSERT INTO tweet ()");
+    created_date = new Date(Date.parse(tweet.created_at.replace(/( \+)/, ' UTC$1')));
+    // Save the tweet if it's not already present.
+    db.run(
+        "INSERT OR IGNORE INTO tweet VALUES(?, ?, datetime(?), ?, ?)",
+        [
+            tweet.id_str,
+            tweet.text,
+            created_date.toISOString(),
+            tweet.user.id_str,
+            JSON.stringify(tweet)
+        ]
+    );
 }
+
