@@ -1,0 +1,15 @@
+{
+  "name": "twitter-search",
+  "version": "0.0.0",
+  "description": "search twitter and store results in sqlite db",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "BSD",
+  "dependencies": {
+    "twitter": "~1.7.0",
+    "sqlite3": "~3.1.8"
+  }
+}
