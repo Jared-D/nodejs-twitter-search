@@ -4,16 +4,21 @@ var sqlite3 = require('sqlite3').verbose();
 const uuidV4 = require('uuid/v4');
 var TwitterSearch = require('./lib/twittersearch');
 
+
 // Create twitter client.
 var twitter_client = new Twitter(twitter_config);
 
 // Open Sqlite DB.
 var db = new sqlite3.Database('db.sqlite');
 
-// Query twitter and save result.
+// Search twitter and save the results.
 db.serialize(function() {
     init_db();
-    search = new TwitterSearch(twitter_client, "#liveperson", save_tweet, save_search);
+    search = new TwitterSearch(
+        twitter_client,
+        "#liveperson",
+        save_tweet,
+        save_search);
 });
 
 
@@ -51,6 +56,7 @@ function save_search() {
 }
 
 // Save tweet(status) to DB.
+// If tweet already exists in the DB it will not be re-inserted.
 function save_tweet(tweet) {
     // Convert twitter date to Date object,
     // see http://programming.mvergel.com/2013/03/convert-twitters-createdat-to.html
