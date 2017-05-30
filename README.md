@@ -1,6 +1,6 @@
 # Simple Twitter Search App
 
-A rudementary Node.js application for searching Twitter and storing the result in a SQLite DB.
+A simple Node.js class for searching Twitter over multiple result pages (requests).
 
 ## Requirements
 
@@ -10,27 +10,65 @@ The main dependency is the Node Package Manager. Other depedencies can be instal
 
 ## Configuration
 
-Access credentials are required to use the Twitter API. These are read from the ./config.json JSON file. Make sure the file permisions restrict others from getting access to your keys/secrets!
-
-You can enter [User access tokens](https://dev.twitter.com/oauth/overview/application-owner-access-tokens), eg:
-
-    {
-        "consumer_key": "your-key",
-        "consumer_secret": "your-secret",
-        "access_token_key": "your-token-key",
-        "access_token_secret": "your-token-secret"
-    }
-
-Or [application-only tokens](https://dev.twitter.com/oauth/application-only), eg:
-
-    {
-        "consumer_key": "your-key",
-        "consumer_secret": "your-secret",
-        "bearer_token": "your-app-bearer-token"
-    }
+TwitterSearch requires 4 parameters:
+* A twitter client object.
+* A query string containing the terms to search for.
+* A callabck function for processing tweets, called for each tweet.
+* A callback function called when the search is finished.
 
 ## Running a search
 
-The query is currently hardcoded in app.js. Run with:
+Example:
 
-    node app.js
+	var Twitter = require('twitter');
+	var TwitterSearch = require('twitter-search');
+
+
+	// Create a twitter client.
+	var twitter_client = new Twitter({
+		consumer_key: process.env.TWITTER_CONSUMER_KEY,
+		consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+		access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY,
+		access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET
+	});
+
+	// Search twitter, query is taken from the first command line argument.
+	search = new TwitterSearch(
+		twitter_client,
+		process.argv[2],
+		output_tweet,
+		output_search
+	);
+
+	// Output search query details.
+	function output_search() {
+		console.log("Search finished");
+		console.log("  query: " + this.query);
+		console.log("  min_id: " + this.min_id);
+		console.log("  max_id: " + this.max_id);
+		console.log("  search stop reason: " + this.finish_reason);
+		console.log("  start_time: " + this.start_time.toISOString());
+		console.log("  end_time: " + this.end_time.toISOString());
+	}
+
+	// Output tweet(status).
+	function output_tweet(tweet) {
+		// Convert twitter date to Date object,
+		// see http://programming.mvergel.com/2013/03/convert-twitters-createdat-to.html
+		created_date = new Date(Date.parse(tweet.created_at.replace(/( \+)/, ' UTC$1')));
+		// Output some tweet details.
+		console.log("Tweet " + tweet.id_str);
+		console.log("  text: " + tweet.text);
+		console.log("  date: " + created_date.toISOString());
+		console.log("  user id: " + tweet.user.id_str);
+	}
+
+
+Run the example with:
+
+    TWITTER_CONSUMER_KEY='...' \
+    TWITTER_CONSUMER_SECRET='...' \
+    TWITTER_ACCESS_TOKEN_KEY='...' \
+    TWITTER_ACCESS_TOKEN_SECRET='...' \
+    node example.js '#google'
+
