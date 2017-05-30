@@ -1,4 +1,4 @@
-# Simple Twitter Search App
+# Twitter Search
 
 A simple Node.js class for searching Twitter over multiple result pages (requests).
 
